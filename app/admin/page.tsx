@@ -163,31 +163,14 @@ export default function AdminPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <HowItWorksAdmin />
           <ThemeToggle />
-          <div
-            style={{ position: 'relative', flexShrink: 0, cursor: 'default' }}
-            title={`${currentTeacher.name} · ${currentTeacher.role === 'super_admin' ? 'Super Admin' : 'Teacher'}`}
-          >
-            <div style={{
-              width: 30, height: 30, borderRadius: '50%',
-              background: currentTeacher.role === 'super_admin' ? 'var(--accent)' : 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: currentTeacher.role === 'super_admin' ? '#fff' : 'var(--text-muted)',
-            }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.67 0 4.8-2.13 4.8-4.8S14.67 2.4 12 2.4 7.2 4.53 7.2 7.2 9.33 12 12 12zm0 2.4c-3.2 0-9.6 1.61-9.6 4.8v2.4h19.2v-2.4c0-3.19-6.4-4.8-9.6-4.8z"/>
-              </svg>
-            </div>
-            {currentTeacher.role === 'super_admin' && (
-              <div style={{
-                position: 'absolute', bottom: -1, right: -1,
-                width: 11, height: 11, borderRadius: '50%',
-                background: '#f5a623', border: '1.5px solid var(--bg)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 7, color: '#fff', fontWeight: 700, lineHeight: 1,
-              }}>★</div>
-            )}
-          </div>
+          {currentTeacher.role === 'super_admin' && (
+            <div
+              title="Super Admin"
+              style={{
+                fontSize: 16, lineHeight: 1, cursor: 'default', flexShrink: 0,
+              }}
+            >★</div>
+          )}
           <button
             onClick={() => setView('more' as any)}
             style={{
@@ -204,6 +187,11 @@ export default function AdminPage() {
       </nav>
 
       <main style={{ maxWidth: 860, margin: '0 auto', padding: '24px 20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Welcome, {currentTeacher.name}
+          </div>
+        </div>
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
             <div>

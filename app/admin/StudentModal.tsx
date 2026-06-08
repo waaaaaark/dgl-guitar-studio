@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Student } from '@/lib/supabase'
+import type { Teacher } from '@/lib/auth'
 
 type Props = { student?: Student; onClose: () => void; onSaved: () => void }
 
@@ -14,11 +15,18 @@ export default function StudentModal({ student, onClose, onSaved }: Props) {
     start_date: student?.start_date || new Date().toISOString().split('T')[0],
     admin_notes: student?.admin_notes || '',
     student_profile: student?.student_profile || 'Teen',
-    belt_system_active: student?.belt_system_active ?? true,
     practice_goal_minutes_week: student?.practice_goal_minutes_week ?? '',
+    teacher_id: (student as any)?.teacher_id || '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [teachers, setTeachers] = useState<Teacher[] | null>(null)
+
+  useEffect(() => {
+    fetch('/api/teachers').then(r => {
+      if (r.ok) r.json().then((data: Teacher[]) => setTeachers(data.filter(t => t.active)))
+    })
+  }, [])
 
   function set(field: string, value: any) {
     setForm(f => ({ ...f, [field]: value }))
@@ -31,6 +39,7 @@ export default function StudentModal({ student, onClose, onSaved }: Props) {
       ...form,
       email: form.email.trim() || null,
       practice_goal_minutes_week: form.practice_goal_minutes_week === '' ? null : form.practice_goal_minutes_week,
+      teacher_id: form.teacher_id || null,
     }
     const res = student
       ? await fetch(`/api/students/${student.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -63,6 +72,17 @@ export default function StudentModal({ student, onClose, onSaved }: Props) {
             <label>Email (optional)</label>
             <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="student@email.com" />
           </div>
+          {teachers !== null && (
+            <div>
+              <label>Assign to Teacher (optional)</label>
+              <select value={form.teacher_id} onChange={e => set('teacher_id', e.target.value)}>
+                <option value="">— Unassigned —</option>
+                {teachers.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label>Skill Level</label>
@@ -94,29 +114,6 @@ export default function StudentModal({ student, onClose, onSaved }: Props) {
               <label>Start Date</label>
               <input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
             </div>
-          </div>
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 8, border: '1px solid var(--border)',
-          }}>
-            <div>
-              <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>Belt System</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Enable XP, belts, and practice tracking</div>
-            </div>
-            <button
-              onClick={() => set('belt_system_active', !form.belt_system_active)}
-              style={{
-                width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-                background: form.belt_system_active ? 'var(--accent)' : 'var(--border)',
-                position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-              }}
-            >
-              <div style={{
-                position: 'absolute', top: 3, left: form.belt_system_active ? 23 : 3,
-                width: 18, height: 18, borderRadius: '50%', background: 'white',
-                transition: 'left 0.2s',
-              }} />
-            </button>
           </div>
           <div>
             <label>Weekly practice goal (minutes)</label>
