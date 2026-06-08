@@ -6,10 +6,64 @@ export async function GET() {
   const teacher = await checkAdminAuth()
   if (!teacher) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const isSuperAdmin = teacher.role === 'super_admin'
+
+  // Scope to teacher's own students for non-super-admin
+  let studentIds: string[] | null = null
+  if (!isSuperAdmin) {
+    const { data } = await supabase
+      .from('students')
+      .select('id')
+      .eq('teacher_id', teacher.id)
+      .not('name', 'like', '%__test__%')
+    studentIds = (data || []).map(s => s.id)
+  }
+
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+
+  const buildStudentsQ = () => {
+    const q = supabase.from('students').select('id, active, belt, current_streak, name').not('name', 'like', '%__test__%')
+    return studentIds ? q.in('id', studentIds) : q
+  }
+
+  const buildLessonsQ = (extraFilters?: (q: any) => any) => {
+    let q = supabase.from('lessons').select('id, lesson_date')
+    if (!isSuperAdmin) q = q.eq('teacher_id', teacher.id)
+    return extraFilters ? extraFilters(q) : q
+  }
+
+  const buildPracticeQ = () => {
+    const q = supabase.from('practice_sessions').select('duration_minutes, xp_earned, student_id').gte('created_at', startOfWeek)
+    return studentIds ? q.in('student_id', studentIds) : q
+  }
+
+  const buildPageViewsQ = (allTime = false) => {
+    let q = supabase.from('page_views').select(allTime ? 'student_id' : 'id, student_id, viewed_at')
+    if (!allTime) q = (q as any).gte('viewed_at', startOfMonth)
+    return studentIds ? (q as any).in('student_id', studentIds) : q
+  }
+
+  const buildBeltQ = () => {
+    const q = supabase.from('students').select('belt').not('name', 'like', '%__test__%').eq('active', true)
+    return studentIds ? q.in('id', studentIds) : q
+  }
+
+  const buildSongsQ = () => {
+    const q = supabase.from('student_songs').select('song_id, song:songs(title, artist)')
+    return studentIds ? q.in('student_id', studentIds) : q
+  }
+
+  const buildRecentLessonsQ = () => {
+    let q = supabase.from('lessons')
+      .select('id, lesson_date, student:students(name)')
+      .order('lesson_date', { ascending: false })
+      .limit(5)
+    if (!isSuperAdmin) q = q.eq('teacher_id', teacher.id)
+    return q
+  }
 
   const [
     studentsRes,
@@ -22,60 +76,36 @@ export async function GET() {
     topSongsRes,
     recentActivityRes,
   ] = await Promise.all([
-    // Student counts
-    supabase.from('students').select('id, active, belt, current_streak, total_practice_minutes, name').not('name', 'like', '%__test__%'),
-
-    // Lessons this month
-    supabase.from('lessons').select('id, lesson_date').gte('lesson_date', startOfMonth.split('T')[0]),
-
-    // Lessons last month
-    supabase.from('lessons').select('id').gte('lesson_date', startOfLastMonth.split('T')[0]).lt('lesson_date', startOfMonth.split('T')[0]),
-
-    // Practice sessions this week
-    supabase.from('practice_sessions').select('duration_minutes, xp_earned, student_id').gte('created_at', startOfWeek),
-
-    // Total page views this month
-    supabase.from('page_views').select('id, student_id, viewed_at').gte('viewed_at', startOfMonth),
-
-    // Page views per student (all time)
-    supabase.from('page_views').select('student_id'),
-
-    // Belt distribution
-    supabase.from('students').select('belt').not('name', 'like', '%__test__%').eq('active', true),
-
-    // Most assigned songs
-    supabase.from('student_songs').select('song_id, song:songs(title, artist)'),
-
-    // Recent lessons
-    supabase.from('lessons')
-      .select('id, lesson_date, student:students(name)')
-      .order('lesson_date', { ascending: false })
-      .limit(5),
+    buildStudentsQ(),
+    buildLessonsQ(q => q.gte('lesson_date', startOfMonth.split('T')[0])),
+    buildLessonsQ(q => q.gte('lesson_date', startOfLastMonth.split('T')[0]).lt('lesson_date', startOfMonth.split('T')[0])),
+    buildPracticeQ(),
+    buildPageViewsQ(false),
+    buildPageViewsQ(true),
+    buildBeltQ(),
+    buildSongsQ(),
+    buildRecentLessonsQ(),
   ])
 
   const students = studentsRes.data || []
   const activeStudents = students.filter(s => s.active)
   const inactiveStudents = students.filter(s => !s.active)
 
-  // Page views per student map
   const viewsPerStudent: Record<string, number> = {}
   for (const v of (pageViewsPerStudentRes.data || [])) {
     viewsPerStudent[v.student_id] = (viewsPerStudent[v.student_id] || 0) + 1
   }
 
-  // Top students by page views
   const studentViewData = students
     .map(s => ({ id: s.id, name: s.name, views: viewsPerStudent[s.id] || 0 }))
     .sort((a, b) => b.views - a.views)
     .slice(0, 10)
 
-  // Belt distribution
   const beltCounts: Record<string, number> = {}
   for (const s of (beltDistRes.data || [])) {
     beltCounts[s.belt] = (beltCounts[s.belt] || 0) + 1
   }
 
-  // Top songs
   const songCounts: Record<string, { title: string; artist: string | null; count: number }> = {}
   for (const ss of (topSongsRes.data || [])) {
     const id = ss.song_id
@@ -84,12 +114,10 @@ export async function GET() {
   }
   const topSongs = Object.values(songCounts).sort((a, b) => b.count - a.count).slice(0, 10)
 
-  // Practice stats this week
   const practiceSessions = practiceThisWeekRes.data || []
   const totalPracticeMinutesWeek = practiceSessions.reduce((sum, s) => sum + s.duration_minutes, 0)
   const uniquePracticingStudents = new Set(practiceSessions.map(s => s.student_id)).size
 
-  // Streaks
   const topStreaks = activeStudents
     .filter(s => s.current_streak > 0)
     .sort((a, b) => b.current_streak - a.current_streak)

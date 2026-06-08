@@ -12,7 +12,6 @@ import BulkEmailModal from './BulkEmailModal'
 import { useToast } from '@/lib/toast'
 import TipsManager from './TipsManager'
 import ResourcesLibrary from './ResourcesLibrary'
-import CurriculumEditor from './CurriculumEditor'
 import HowItWorksAdmin from './HowItWorksAdmin'
 import SettingsPage from './SettingsPage'
 import AnalyticsPage from './AnalyticsPage'
@@ -32,7 +31,7 @@ export default function AdminPage() {
   const currentTeacher = useTeacher()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<'roster' | 'student' | 'songs' | 'tips' | 'resources' | 'curriculum' | 'settings' | 'analytics' | 'more' | 'teacher-panel'>('roster')
+  const [view, setView] = useState<'roster' | 'student' | 'songs' | 'tips' | 'resources' | 'settings' | 'analytics' | 'more' | 'teacher-panel'>('roster')
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -109,13 +108,10 @@ export default function AdminPage() {
   }
 
   if (currentView === 'songs') return <SongsLibrary onBack={() => setView('roster')} />
-  if (currentView === 'tips') return <TipsManager onBack={() => setView('roster')} />
+  if (currentView === 'tips') return <TipsManager onBack={() => setView('more')} />
   if (currentView === 'resources') return <ResourcesLibrary onBack={() => setView('roster')} />
-  if (currentView === 'curriculum') return <CurriculumEditor onBack={() => setView('roster')} />
   if (currentView === 'settings') return <SettingsPage onBack={() => setView('more')} />
   if (currentView === 'analytics') return <AnalyticsPage onBack={() => setView('more')} />
-  if (currentView === 'tips') return <TipsManager onBack={() => setView('more')} />
-  if (currentView === 'curriculum') return <CurriculumEditor onBack={() => setView('more')} />
   if (currentView === 'teacher-panel') return <TeacherPanel onBack={() => setView('more')} />
   if (currentView === 'more') return (
     <MoreMenu
@@ -168,17 +164,29 @@ export default function AdminPage() {
           <HowItWorksAdmin />
           <ThemeToggle />
           <div
+            style={{ position: 'relative', flexShrink: 0, cursor: 'default' }}
             title={`${currentTeacher.name} · ${currentTeacher.role === 'super_admin' ? 'Super Admin' : 'Teacher'}`}
-            style={{
+          >
+            <div style={{
               width: 30, height: 30, borderRadius: '50%',
               background: currentTeacher.role === 'super_admin' ? 'var(--accent)' : 'var(--bg-elevated)',
               border: '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700, color: currentTeacher.role === 'super_admin' ? '#fff' : 'var(--text-muted)',
-              flexShrink: 0, cursor: 'default', letterSpacing: '0.02em',
-            }}
-          >
-            {getInitials(currentTeacher.name)}
+              color: currentTeacher.role === 'super_admin' ? '#fff' : 'var(--text-muted)',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.67 0 4.8-2.13 4.8-4.8S14.67 2.4 12 2.4 7.2 4.53 7.2 7.2 9.33 12 12 12zm0 2.4c-3.2 0-9.6 1.61-9.6 4.8v2.4h19.2v-2.4c0-3.19-6.4-4.8-9.6-4.8z"/>
+              </svg>
+            </div>
+            {currentTeacher.role === 'super_admin' && (
+              <div style={{
+                position: 'absolute', bottom: -1, right: -1,
+                width: 11, height: 11, borderRadius: '50%',
+                background: '#f5a623', border: '1.5px solid var(--bg)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 7, color: '#fff', fontWeight: 700, lineHeight: 1,
+              }}>★</div>
+            )}
           </div>
           <button
             onClick={() => setView('more' as any)}

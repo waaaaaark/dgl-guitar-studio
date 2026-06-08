@@ -3,7 +3,7 @@
 import { ThemeToggle } from '@/lib/theme'
 import { useTeacher } from '@/lib/TeacherContext'
 
-type View = 'tips' | 'curriculum' | 'analytics' | 'settings' | 'teacher-panel'
+type View = 'tips' | 'analytics' | 'settings' | 'teacher-panel'
 
 type Props = {
   onNavigate: (view: View) => void
@@ -16,12 +16,11 @@ export default function MoreMenu({ onNavigate, onBack, onLogout }: Props) {
 
   const items: { view: View; icon: string; label: string; desc: string }[] = [
     { view: 'analytics', icon: '📊', label: 'Analytics', desc: 'Student page views, practice stats, belt distribution' },
-    { view: 'curriculum', icon: '🎓', label: 'Curriculum', desc: 'Edit belt requirements for each stripe' },
-    { view: 'tips', icon: '💡', label: 'Practice Tips', desc: 'Manage tips shown to students during practice' },
-    { view: 'settings', icon: '⚙️', label: 'Settings', desc: 'Studio name, defaults, email templates' },
-    ...(teacher.role === 'super_admin'
-      ? [{ view: 'teacher-panel' as const, icon: '👥', label: 'Teachers', desc: 'Manage teachers, invite new staff, assign roles' }]
-      : []),
+    ...(teacher.role === 'super_admin' ? [
+      { view: 'tips' as const, icon: '💡', label: 'Practice Tips', desc: 'Manage tips shown to students during practice' },
+      { view: 'settings' as const, icon: '⚙️', label: 'Settings', desc: 'Studio name, defaults, email templates' },
+      { view: 'teacher-panel' as const, icon: '👥', label: 'Teachers', desc: 'Manage teachers, invite new staff, assign roles' },
+    ] : []),
   ]
 
   return (
