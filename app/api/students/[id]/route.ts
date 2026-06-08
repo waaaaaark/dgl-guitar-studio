@@ -7,13 +7,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!teacher) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+  const isSuperAdmin = teacher.role === 'super_admin'
 
-  const { data: student, error } = await supabase
-    .from('students')
-    .select('*')
-    .eq('id', id)
-    .eq('teacher_id', teacher.id)
-    .single()
+  const studentQ = supabase.from('students').select('*').eq('id', id)
+  const { data: student, error } = await (isSuperAdmin ? studentQ : studentQ.eq('teacher_id', teacher.id)).single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
 
@@ -38,12 +35,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const body = await req.json()
+  const isSuperAdmin = teacher.role === 'super_admin'
 
-  const { data, error } = await supabase
-    .from('students')
-    .update(body)
-    .eq('id', id)
-    .eq('teacher_id', teacher.id)
+  const updateQ = supabase.from('students').update(body).eq('id', id)
+  const { data, error } = await (isSuperAdmin ? updateQ : updateQ.eq('teacher_id', teacher.id))
     .select()
     .single()
 
@@ -56,7 +51,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!teacher) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { error } = await supabase.from('students').delete().eq('id', id).eq('teacher_id', teacher.id)
+  const isSuperAdmin = teacher.role === 'super_admin'
+
+  const deleteQ = supabase.from('students').delete().eq('id', id)
+  const { error } = await (isSuperAdmin ? deleteQ : deleteQ.eq('teacher_id', teacher.id))
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
