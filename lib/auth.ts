@@ -81,10 +81,14 @@ export async function inviteTeacher(
   const { createSupabaseServiceClient } = await import('./supabase/server')
   const supabase = createSupabaseServiceClient()
 
-  // inviteUserByEmail uses the service role to send an invite link
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+  if (!baseUrl || baseUrl.includes('localhost')) {
+    throw new Error('NEXT_PUBLIC_BASE_URL must be set to the production URL before sending invites')
+  }
+
   const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: { name, role }, // passed to raw_user_meta_data, used by the DB trigger
-    redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
+    data: { name, role },
+    redirectTo: `${baseUrl}/reset-password`,
   })
 
   if (error) throw error
