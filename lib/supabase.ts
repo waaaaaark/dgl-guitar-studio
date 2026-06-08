@@ -8,7 +8,9 @@ let _client: SupabaseClient | null = null
 export function getSupabase() {
   if (!_client) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    // API routes run server-side: prefer service role key to bypass RLS.
+    // Falls back to anon key (client-side or missing service key).
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     if (!url || !key) throw new Error('Missing Supabase env vars')
     _client = createClient(url, key)
   }
